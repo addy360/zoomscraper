@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,10 +28,31 @@ func (p *Phone) sanitizeFields() {
 
 type phones []Phone
 
+type byPrice phones
+
+func (byPrice byPrice) Len() int {
+	return len(byPrice)
+}
+
+func extractPrice(price string) int {
+	priceString := strings.ReplaceAll(price, ",", "")
+	priceString = strings.Split(priceString, " ")[1]
+	priceInt, _ := strconv.Atoi(priceString)
+	return priceInt
+}
+
+func (byPrice byPrice) Less(i, j int) bool {
+	return extractPrice(byPrice[i].price) < extractPrice(byPrice[j].price)
+}
+
+func (byPrice byPrice) Swap(i, j int) {
+	byPrice[i], byPrice[j] = byPrice[j], byPrice[i]
+}
+
 func (p *phones) search(phonename string) {
 	for _, v := range *p {
 		if strings.Contains(strings.ToUpper(v.phoneName), strings.ToUpper(phonename)) {
-			fmt.Printf("%s : %s\n", v.phoneName, v.price)
+			fmt.Printf("Phone name : %s\nPhone price : %s\nLocation : %s\n\n", v.phoneName, v.price, v.location)
 		}
 	}
 
@@ -54,8 +77,8 @@ func main() {
 
 	c.OnHTML("div.listings-cards__list-item", func(h *colly.HTMLElement) {
 		phoneName := h.ChildText(".listing-card__header__title")
-		phoneTag := h.ChildText(".listing-card__header__tag")
-		location := h.ChildText(".listing-listing-card__header__location")
+		phoneTag := h.ChildText(".listing-card__header__tags")
+		location := h.ChildText(".listing-card__header__location")
 		price := h.ChildText(".listing-card__price__value")
 		phone := Phone{
 			phoneName: phoneName,
@@ -90,6 +113,8 @@ func main() {
 		}
 	}
 
+	sort.Sort(byPrice(scrappedPhones))
+	fmt.Printf("\n\nFOUND %d PHONES\n", len(scrappedPhones))
 	for {
 		scrappedPhones.userSearch()
 	}
